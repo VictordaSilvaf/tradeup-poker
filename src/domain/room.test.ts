@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   beginReveal,
   castVote,
+  maskRoomVotes,
   nextRound,
   requiredName,
   revealVotes,
@@ -14,8 +15,8 @@ const room = (): Room => ({
   ownerId: 'ana',
   deck: 'fibonacci',
   participants: [
-    { id: 'ana', name: 'Ana', vote: null, spectator: false },
-    { id: 'rui', name: 'Rui', vote: null, spectator: false },
+    { id: 'ana', name: 'Ana', vote: null, voted: false, spectator: false },
+    { id: 'rui', name: 'Rui', vote: null, voted: false, spectator: false },
   ],
   revealed: false,
   round: 1,
@@ -40,9 +41,13 @@ describe('votação', () => {
     const first = castVote(original, 'ana', '5');
     expect(original.participants[0].vote).toBeNull();
     expect(first.participants[0].vote).toBe('5');
+    expect(first.participants[0].voted).toBe(true);
     const second = castVote(first, 'ana', '8');
     expect(second.participants[0].vote).toBe('8');
-    expect(castVote(second, 'ana', '8').participants[0].vote).toBeNull();
+    expect(castVote(second, 'ana', '8').participants[0]).toMatchObject({
+      vote: null,
+      voted: false,
+    });
   });
   it('impede votos de observadores e desconhecidos', () => {
     const current = room();
@@ -77,11 +82,19 @@ describe('votação', () => {
     expect(result.round).toBe(2);
     expect(result.revealed).toBe(false);
     expect(result.revealEndsAt).toBeNull();
-    expect(result.participants.every((p) => p.vote === null)).toBe(true);
+    expect(result.participants.every((p) => p.vote === null && p.voted === false)).toBe(true);
     expect(result.history[0]).toMatchObject({ votes: ['5'], title: 'Votação livre', number: 1 });
   });
   it('não registra votos ainda ocultos no histórico', () =>
     expect(nextRound(castVote(room(), 'ana', '5'), 'h', '2026-01-01').history).toHaveLength(0));
+});
+describe('máscara de votos', () => {
+  it('oculta votos de outros antes da revelação e mantém o indicador voted', () => {
+    const voted = castVote(castVote(room(), 'ana', '5'), 'rui', '8');
+    const masked = maskRoomVotes(voted, 'ana');
+    expect(masked.participants[0]).toMatchObject({ vote: '5', voted: true });
+    expect(masked.participants[1]).toMatchObject({ vote: null, voted: true });
+  });
 });
 describe('estatísticas', () => {
   it('calcula média incluindo zero e excluindo cartas especiais', () =>

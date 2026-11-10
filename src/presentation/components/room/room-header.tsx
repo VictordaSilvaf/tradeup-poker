@@ -1,4 +1,5 @@
 import { ChevronDown, History, ListTodo, UserPlus } from 'lucide-react';
+import { isRealtimeEnabled } from '../../../app/dependencies';
 import type { Participant, Room } from '../../../domain/room';
 import { Avatar, Brand, Button, IconButton, StatusDot } from '../ui';
 import { Timer } from './timer';
@@ -44,7 +45,8 @@ export function RoomHeader({
           <ChevronDown size={15} />
         </button>
         <span className="flex items-center gap-1.5 text-[9px] text-muted">
-          <StatusDot className="h-[5px] w-[5px]" /> Sessão local
+          <StatusDot className="h-[5px] w-[5px]" />{' '}
+          {isRealtimeEnabled ? 'Sincronizado (Supabase)' : 'Sessão local'}
         </span>
       </div>
       <div className="ml-auto flex items-center gap-[15px] max-[1200px]:gap-2.5 max-[640px]:gap-2">

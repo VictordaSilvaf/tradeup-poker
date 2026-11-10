@@ -7,7 +7,15 @@ export const DECKS = {
   tshirt: { name: 'Tamanhos de camiseta', cards: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '?', '☕'] },
 } as const;
 export type DeckId = keyof typeof DECKS;
-export type Participant = { id: string; name: string; vote: string | null; spectator: boolean };
+export type Participant = {
+  id: string;
+  name: string;
+  /** Visible vote value — only for self or after reveal. */
+  vote: string | null;
+  /** Whether the participant has cast a vote (always visible). */
+  voted: boolean;
+  spectator: boolean;
+};
 export type Issue = { id: string; title: string; done: boolean; estimate: number | null };
 export type Round = {
   id: string;
@@ -52,26 +60,24 @@ export function castVote(room: Room, participantId: string, value: string): Room
   if (room.revealEndsAt) throw new DomainError('A revelação já começou.');
   if (!(DECKS[room.deck].cards as readonly string[]).includes(value))
     throw new DomainError('Carta inválida para este baralho.');
+  const nextVote = participant.vote === value ? null : value;
   return {
     ...room,
     participants: room.participants.map((p) =>
-      p.id === participantId ? { ...p, vote: p.vote === value ? null : value } : p,
+      p.id === participantId ? { ...p, vote: nextVote, voted: nextVote !== null } : p,
     ),
   };
 }
 export function beginReveal(room: Room, endsAt: number): Room {
   if (room.revealed) throw new DomainError('Os votos já foram revelados.');
   if (room.revealEndsAt) return room;
-  if (!room.participants.some((p) => !p.spectator && p.vote !== null))
+  if (!room.participants.some((p) => !p.spectator && p.voted))
     throw new DomainError('Espere pelo menos um voto antes de revelar.');
   return { ...room, revealEndsAt: endsAt, timerEndsAt: null };
 }
 export function revealVotes(room: Room): Room {
   if (room.revealed) return { ...room, revealEndsAt: null };
-  if (
-    !room.revealEndsAt &&
-    !room.participants.some((p) => !p.spectator && p.vote !== null)
-  )
+  if (!room.revealEndsAt && !room.participants.some((p) => !p.spectator && p.voted))
     throw new DomainError('Espere pelo menos um voto antes de revelar.');
   return { ...room, revealed: true, revealEndsAt: null, timerEndsAt: null };
 }
@@ -92,7 +98,7 @@ export function summarizeVotes(votes: string[]) {
 }
 export function nextRound(room: Room, roundId: string, finishedAt: string): Room {
   const votes = room.participants
-    .filter((p) => !p.spectator && p.vote !== null)
+    .filter((p) => !p.spectator && p.voted && p.vote !== null)
     .map((p) => p.vote!);
   const title = room.issues.find((i) => i.id === room.activeIssueId)?.title ?? 'Votação livre';
   const history =
@@ -106,9 +112,22 @@ export function nextRound(room: Room, roundId: string, finishedAt: string): Room
     ...room,
     round: room.round + 1,
     revealed: false,
-    participants: room.participants.map((p) => ({ ...p, vote: null })),
+    participants: room.participants.map((p) => ({ ...p, vote: null, voted: false })),
     history,
     timerEndsAt: null,
     revealEndsAt: null,
+  };
+}
+
+/** Hides other players' vote values until the round is revealed. */
+export function maskRoomVotes(room: Room, viewerId?: string | null): Room {
+  if (room.revealed) return room;
+  return {
+    ...room,
+    participants: room.participants.map((participant) =>
+      participant.id === viewerId
+        ? participant
+        : { ...participant, vote: null, voted: participant.voted },
+    ),
   };
 }

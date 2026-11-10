@@ -3,6 +3,7 @@ import { CircleHelp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { planning } from '../../app/dependencies';
 import type { DeckId, Room } from '../../domain/room';
+import { recentRooms } from '../../infra/recent-rooms';
 import { parseRoomCode, session } from '../../infra/session';
 import { HomeHero, RoomEntryForm } from '../components/lobby';
 import { HelpModal } from '../components/modals';
@@ -23,7 +24,7 @@ export function HomePage() {
 
   useEffect(() => {
     void planning
-      .listRooms()
+      .listRooms(recentRooms.read())
       .then(setRecent)
       .catch((listError) => setStorageError(listError.message));
   }, []);
@@ -37,6 +38,7 @@ export function HomePage() {
           : await planning.joinRoom(parseRoomCode(roomCode), playerName);
       try {
         session.save(result.room.id, result.participant.id);
+        recentRooms.remember(result.room.id);
       } catch (saveError) {
         await planning.leave(result.room.id, result.participant.id);
         throw saveError;

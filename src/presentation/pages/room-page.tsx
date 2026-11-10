@@ -91,7 +91,7 @@ function RoomSession({ roomId }: { roomId: string }) {
   if (!participant) return <JoinPage room={room} onJoin={setActor} />;
 
   const activeIssue = room.issues.find((issue) => issue.id === room.activeIssueId);
-  const voted = room.participants.filter((entry) => !entry.spectator && entry.vote !== null).length;
+  const voted = room.participants.filter((entry) => !entry.spectator && entry.voted).length;
   const voters = room.participants.filter((entry) => !entry.spectator).length;
 
   return (

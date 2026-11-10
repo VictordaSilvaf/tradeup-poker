@@ -6,6 +6,31 @@ Front-end completo de planning poker em **React + TypeScript + Vite**, inspirado
 
 Use Node.js 22.12+ (preferencialmente uma versão LTS suportada) e npm.
 
+### 1. Configure o Supabase (realtime + banco)
+
+1. Crie um projeto em [supabase.com](https://supabase.com).
+2. Em **SQL Editor**, execute o arquivo [`supabase/schema.sql`](supabase/schema.sql).
+3. Em **Project Settings → API**, copie a URL e a chave `anon` `public`.
+4. Em **Realtime**, confirme que Broadcast está habilitado.
+5. Copie o ambiente local:
+
+```bash
+cp .env.example .env
+```
+
+Preencha:
+
+```env
+VITE_SUPABASE_URL=https://xxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOi...
+```
+
+Nunca coloque a chave `service_role` no frontend ou no `.env` do Vite.
+
+Sem `.env`, o app cai no modo local (`localStorage`) só para desenvolvimento.
+
+### 2. Subir o front
+
 ```bash
 npm ci
 npm run dev
@@ -38,19 +63,23 @@ A pasta `dist/` pode ser servida em uma hospedagem estática. A aplicação usa 
 - Convite copiável com fallback manual e tratamento de sala não encontrada.
 - Layout responsivo, rótulos acessíveis, foco visível, diálogos com controle de foco e movimento reduzido.
 
-## Como testar duas pessoas sem backend
+## Como testar duas pessoas (Supabase)
 
-1. Crie uma sala e informe seu nome.
-2. Abra **Convidar pessoas** e copie o link.
-3. Cole em **uma nova aba** do mesmo navegador/perfil e informe outro nome.
-4. Vote em cada aba e revele as cartas.
-5. Recarregue uma aba para verificar a persistência.
+1. Configure o `.env` e rode `npm run dev`.
+2. Crie uma sala e informe seu nome.
+3. Abra **Convidar pessoas** e copie o link.
+4. Cole o link em **outro navegador/dispositivo** (ou aba anônima) e entre com outro nome.
+5. Vote em cada cliente e revele as cartas — o estado sincroniza via Realtime.
 
-As duas abas precisam usar exatamente a mesma origem: protocolo, domínio e porta. `localhost` e `127.0.0.1` têm armazenamentos diferentes. Prefira abrir uma nova aba e colar o link; alguns navegadores clonam o `sessionStorage` ao usar “Duplicar aba”.
+A identidade do participante continua em `sessionStorage` (por aba). Fechar a aba não remove a pessoa da sala até **Perfil → Sair da sala**.
 
-**Limite intencional:** outras máquinas, navegadores, perfis ou portas não compartilham a sala. O link é uma referência para dados locais, não um convite remoto funcional. A interface informa essa limitação. Fechar uma aba não equivale a sair: o participante permanece salvo até usar **Perfil → Sair da sala**. A aplicação não afirma presença online real.
+### Segurança
 
-Os votos ficam ocultos na interface antes da revelação, mas estão no armazenamento local e não são secretos contra inspeção pelo DevTools. As permissões locais servem ao fluxo de interface; não são uma barreira de segurança de servidor.
+- Acesso às salas só via RPCs (`get_room` / `create_room` / `save_room`); sem SELECT direto na tabela.
+- O ID da sala funciona como segredo do convite (UUID).
+- Antes da revelação, a UI mascara o valor do voto dos outros (`voted` permanece visível).
+- A chave `anon` é pública por design; a proteção está no schema/RLS/RPCs.
+- Para sigilo criptográfico absoluto dos votos no servidor, o próximo passo seria mover mutações para Edge Functions.
 
 ## Clean Architecture
 
@@ -68,7 +97,7 @@ O domínio não importa as outras camadas. `PlanningService` depende apenas do d
 
 A apresentação chama os casos de uso pela instância composta, sem implementar regras de negócio. Os componentes da mesa e do baralho recebem estado e callbacks. Hooks tratam assinatura de mudanças, erros e bloqueio de submissões simultâneas. Formulários validam no HTML e os casos de uso repetem a validação necessária no domínio.
 
-`localStorage` guarda salas com prefixo `tradeuppoker:room:v1:`. `sessionStorage` guarda a identidade por sala e aba. Eventos `storage` e eventos locais atualizam a interface. Web Locks serializa alterações entre abas quando disponível; sem essa API, o fallback não garante exclusão mútua entre gravações simultâneas. Os dados permanecem no navegador até o usuário limpar o armazenamento.
+Com Supabase, o estado da sala fica em Postgres (`rooms.payload` JSONB) com controle de versão otimista. `sessionStorage` guarda a identidade por sala/aba; `localStorage` guarda só a lista de salas recentes. Realtime usa broadcast no canal `room:{id}` (com polling de fallback). Sem `.env`, o adaptador local (`localStorage`) permanece disponível.
 
 ## Regras das estatísticas
 

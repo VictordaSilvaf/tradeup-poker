@@ -19,11 +19,11 @@ export class PlanningService {
     private readonly identity: IdentityProvider,
     private readonly clock: Clock,
   ) {}
-  listRooms() {
-    return this.rooms.list();
+  listRooms(ids?: string[]) {
+    return this.rooms.list(ids);
   }
-  findRoom(id: string) {
-    return this.rooms.find(id);
+  findRoom(id: string, viewerId?: string | null) {
+    return this.rooms.find(id, viewerId);
   }
   subscribe(id: string, callback: () => void) {
     return this.rooms.subscribe(id, callback);
@@ -34,10 +34,11 @@ export class PlanningService {
       id: this.identity.newId(),
       name: requiredName(playerName, 'seu nome', 30),
       vote: null,
+      voted: false,
       spectator: false,
     };
     const room: Room = {
-      id: this.identity.newId().replaceAll('-', '').slice(0, 10),
+      id: this.identity.newId().replaceAll('-', ''),
       name,
       ownerId: participant.id,
       deck,
@@ -59,6 +60,7 @@ export class PlanningService {
       id: this.identity.newId(),
       name: requiredName(name, 'seu nome', 30),
       vote: null,
+      voted: false,
       spectator,
     };
     const room = await this.rooms.update(id, (room) => ({
@@ -106,7 +108,13 @@ export class PlanningService {
       ...room,
       participants: room.participants.map((p) =>
         p.id === actor
-          ? { ...p, name: clean, spectator, vote: spectator !== p.spectator ? null : p.vote }
+          ? {
+              ...p,
+              name: clean,
+              spectator,
+              vote: spectator !== p.spectator ? null : p.vote,
+              voted: spectator !== p.spectator ? false : p.voted,
+            }
           : p,
       ),
     }));
@@ -139,7 +147,7 @@ export class PlanningService {
       const issue = room.issues.find((i) => i.id === issueId);
       if (!issue || issue.done) throw new DomainError('Escolha uma história pendente.');
       if (room.activeIssueId === issueId) return room;
-      const hasActivity = room.revealed || room.participants.some((p) => p.vote !== null);
+      const hasActivity = room.revealed || room.participants.some((p) => p.voted);
       const updated = hasActivity
         ? nextRound(room, this.identity.newId(), this.clock.now().toISOString())
         : room;
@@ -151,7 +159,9 @@ export class PlanningService {
       if (!room.revealed || !room.activeIssueId)
         throw new DomainError('Selecione uma história e revele os votos primeiro.');
       const { average } = summarizeVotes(
-        room.participants.filter((p) => !p.spectator && p.vote !== null).map((p) => p.vote!),
+        room.participants
+          .filter((p) => !p.spectator && p.voted && p.vote !== null)
+          .map((p) => p.vote!),
       );
       const updated = nextRound(room, this.identity.newId(), this.clock.now().toISOString());
       return {

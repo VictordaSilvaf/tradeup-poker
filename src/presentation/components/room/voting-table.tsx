@@ -27,9 +27,11 @@ export function VotingTable({
   onInvite: () => void;
 }) {
   const voters = room.participants.filter((participant) => !participant.spectator);
-  const voted = voters.filter((participant) => participant.vote !== null).length;
+  const voted = voters.filter((participant) => participant.voted).length;
   const { average, agreement } = summarizeVotes(
-    voters.filter((participant) => participant.vote !== null).map((participant) => participant.vote!),
+    voters
+      .filter((participant) => participant.voted && participant.vote !== null)
+      .map((participant) => participant.vote!),
   );
   const count = room.participants.length;
   const currentIndex = Math.max(

@@ -29,7 +29,7 @@ export function VotingDeck({
             <>
               <LockKeyhole size={15} /> Rodada encerrada
             </>
-          ) : participant.vote !== null ? (
+          ) : participant.voted ? (
             <>
               <MousePointer2 size={15} /> Sua carta está na mesa
             </>

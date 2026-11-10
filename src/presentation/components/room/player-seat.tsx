@@ -31,7 +31,7 @@ export function PlayerSeat({
   side: SeatSide;
   style: CSSProperties;
 }) {
-  const hasVote = participant.vote !== null;
+  const hasVote = participant.voted;
 
   return (
     <div

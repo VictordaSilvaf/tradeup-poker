@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Room } from '../../domain/room';
 import { planning } from '../../app/dependencies';
+import { recentRooms } from '../../infra/recent-rooms';
 import { session } from '../../infra/session';
 import { Brand, Button, CheckLabel, ErrorMessage, Field, LargeIcon } from '../components/ui';
 import { useAction } from '../hooks/use-action';
@@ -18,6 +19,7 @@ export function JoinPage({ room, onJoin }: { room: Room; onJoin: (id: string) =>
       const result = await planning.joinRoom(room.id, name, spectator);
       try {
         session.save(room.id, result.participant.id);
+        recentRooms.remember(room.id);
       } catch (saveError) {
         await planning.leave(room.id, result.participant.id);
         throw saveError;

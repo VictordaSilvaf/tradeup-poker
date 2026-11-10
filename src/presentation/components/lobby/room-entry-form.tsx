@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react';
 import { ArrowRight, Check, ChevronRight, Clock3, DoorOpen, Plus, ShieldCheck } from 'lucide-react';
+import { isRealtimeEnabled } from '../../../app/dependencies';
 import { DECKS } from '../../../domain/room';
 import type { DeckId, Room } from '../../../domain/room';
 import { Button, ErrorMessage, Field, SelectField } from '../ui';
@@ -162,7 +163,11 @@ export function RoomEntryForm({
       </div>
       <p className="mt-4 flex items-center gap-2 text-[11px] text-muted">
         <ShieldCheck size={16} />
-        <span>Versão local: suas salas ficam neste navegador.</span>
+        <span>
+          {isRealtimeEnabled
+            ? 'Salas sincronizadas via Supabase (realtime + banco).'
+            : 'Modo local: configure o .env do Supabase para multiplayer real.'}
+        </span>
       </p>
       {recent.length > 0 && (
         <div className="mt-6">

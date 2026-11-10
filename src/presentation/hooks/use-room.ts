@@ -1,22 +1,28 @@
 import { useEffect, useState } from 'react';
 import { planning } from '../../app/dependencies';
 import type { Room } from '../../domain/room';
+import { session } from '../../infra/session';
+
 export function useRoom(id: string) {
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
   useEffect(() => {
     let active = true;
     const refresh = async () => {
       try {
-        const result = await planning.findRoom(id);
+        const viewerId = session.read(id);
+        const result = await planning.findRoom(id, viewerId);
         if (active) {
           setRoom(result);
           setError('');
         }
-      } catch (error) {
+      } catch (loadError) {
         if (active)
-          setError(error instanceof Error ? error.message : 'Não foi possível carregar a sala.');
+          setError(
+            loadError instanceof Error ? loadError.message : 'Não foi possível carregar a sala.',
+          );
       } finally {
         if (active) setLoading(false);
       }
@@ -31,5 +37,6 @@ export function useRoom(id: string) {
       unsubscribe();
     };
   }, [id]);
+
   return { room, loading, error };
 }

@@ -27,7 +27,7 @@ const makeRoom = (): Room => ({
   name: 'Produto',
   ownerId: 'ana',
   deck: 'fibonacci',
-  participants: [{ id: 'ana', name: 'Ana', vote: null, spectator: false }],
+  participants: [{ id: 'ana', name: 'Ana', vote: null, voted: false, spectator: false }],
   revealed: false,
   round: 1,
   issues: [],

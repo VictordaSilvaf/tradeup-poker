@@ -13,6 +13,7 @@ const roomSchema = z.object({
       id: z.string(),
       name: z.string().trim().min(1).max(30),
       vote: z.string().nullable(),
+      voted: z.boolean().optional(),
       spectator: z.boolean(),
     }),
   ),
@@ -43,35 +44,57 @@ const roomSchema = z.object({
 const PREFIX = 'tradeuppoker:room:v1:';
 const CHANGE = 'tradeuppoker:room-changed';
 
+function normalizeRoom(room: z.infer<typeof roomSchema>): Room {
+  return {
+    ...room,
+    revealEndsAt: room.revealEndsAt ?? null,
+    participants: room.participants.map((participant) => ({
+      ...participant,
+      voted: participant.voted ?? participant.vote !== null,
+    })),
+  };
+}
+
 export class LocalRoomRepository implements RoomRepository {
   constructor(private readonly storageOverride?: Storage) {}
   private get storage(): Storage {
     return this.storageOverride ?? localStorage;
   }
-  async find(id: string): Promise<Room | null> {
+  async find(id: string, _viewerId?: string | null): Promise<Room | null> {
     try {
       const raw = this.storage.getItem(PREFIX + id);
       if (!raw) return null;
       const result = roomSchema.safeParse(JSON.parse(raw));
       if (!result.success) throw new Error('Invalid schema');
-      return result.data;
+      return normalizeRoom(result.data);
     } catch {
       throw new DomainError(
         'Não foi possível ler a sala. Verifique se o armazenamento do navegador está disponível.',
       );
     }
   }
-  async list(): Promise<Room[]> {
+  async list(ids?: string[]): Promise<Room[]> {
     const rooms: Room[] = [];
     try {
-      for (let i = 0; i < this.storage.length; i++) {
-        const key = this.storage.key(i);
-        if (!key?.startsWith(PREFIX)) continue;
-        try {
-          const room = await this.find(key.slice(PREFIX.length));
-          if (room) rooms.push(room);
-        } catch {
-          /* A broken record must not hide healthy rooms. */
+      if (ids) {
+        for (const id of ids) {
+          try {
+            const room = await this.find(id);
+            if (room) rooms.push(room);
+          } catch {
+            /* Skip broken records. */
+          }
+        }
+      } else {
+        for (let i = 0; i < this.storage.length; i++) {
+          const key = this.storage.key(i);
+          if (!key?.startsWith(PREFIX)) continue;
+          try {
+            const room = await this.find(key.slice(PREFIX.length));
+            if (room) rooms.push(room);
+          } catch {
+            /* A broken record must not hide healthy rooms. */
+          }
         }
       }
     } catch {

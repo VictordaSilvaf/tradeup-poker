@@ -1,7 +1,7 @@
 import type { Room } from '../domain/room';
 export interface RoomRepository {
-  find(id: string): Promise<Room | null>;
-  list(): Promise<Room[]>;
+  find(id: string, viewerId?: string | null): Promise<Room | null>;
+  list(ids?: string[]): Promise<Room[]>;
   create(room: Room): Promise<void>;
   update(id: string, transform: (room: Room) => Room): Promise<Room>;
   subscribe(id: string, callback: () => void): () => void;

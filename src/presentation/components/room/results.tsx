@@ -5,9 +5,9 @@ import { formatNumber } from '../../lib/format';
 
 export function Results({ room }: { room: Room }) {
   const result = summarizeVotes(
-    room.participants.filter((participant) => !participant.spectator && participant.vote !== null).map(
-      (participant) => participant.vote!,
-    ),
+    room.participants
+      .filter((participant) => !participant.spectator && participant.voted && participant.vote !== null)
+      .map((participant) => participant.vote!),
   );
 
   return (
