@@ -1,0 +1,114 @@
+export const DECKS = {
+  fibonacci: {
+    name: 'Fibonacci',
+    cards: ['0', '1', '2', '3', '5', '8', '13', '21', '34', '?', '☕'],
+  },
+  simplified: { name: 'Simplificado', cards: ['1', '2', '3', '5', '8', '?', '☕'] },
+  tshirt: { name: 'Tamanhos de camiseta', cards: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '?', '☕'] },
+} as const;
+export type DeckId = keyof typeof DECKS;
+export type Participant = { id: string; name: string; vote: string | null; spectator: boolean };
+export type Issue = { id: string; title: string; done: boolean; estimate: number | null };
+export type Round = {
+  id: string;
+  number: number;
+  title: string;
+  votes: string[];
+  finishedAt: string;
+};
+export type Room = {
+  id: string;
+  name: string;
+  ownerId: string;
+  deck: DeckId;
+  participants: Participant[];
+  revealed: boolean;
+  round: number;
+  issues: Issue[];
+  activeIssueId: string | null;
+  history: Round[];
+  createdAt: string;
+  timerEndsAt: number | null;
+  /** Timestamp when the reveal countdown finishes and cards flip. */
+  revealEndsAt: number | null;
+};
+export class DomainError extends Error {}
+export function requiredName(value: string, label: string, max = 60): string {
+  const name = value.trim().replace(/\s+/g, ' ');
+  if (!name) throw new DomainError(`Informe ${label}.`);
+  if (name.length > max) throw new DomainError(`Use até ${max} caracteres para ${label}.`);
+  return name;
+}
+export function requireParticipant(room: Room, id: string): Participant {
+  const participant = room.participants.find((p) => p.id === id);
+  if (!participant) throw new DomainError('Entre na sala para continuar.');
+  return participant;
+}
+export const REVEAL_COUNTDOWN_MS = 3000;
+export function castVote(room: Room, participantId: string, value: string): Room {
+  const participant = requireParticipant(room, participantId);
+  if (participant.spectator) throw new DomainError('Observadores não participam da votação.');
+  if (room.revealed) throw new DomainError('Inicie uma nova rodada para votar novamente.');
+  if (room.revealEndsAt) throw new DomainError('A revelação já começou.');
+  if (!(DECKS[room.deck].cards as readonly string[]).includes(value))
+    throw new DomainError('Carta inválida para este baralho.');
+  return {
+    ...room,
+    participants: room.participants.map((p) =>
+      p.id === participantId ? { ...p, vote: p.vote === value ? null : value } : p,
+    ),
+  };
+}
+export function beginReveal(room: Room, endsAt: number): Room {
+  if (room.revealed) throw new DomainError('Os votos já foram revelados.');
+  if (room.revealEndsAt) return room;
+  if (!room.participants.some((p) => !p.spectator && p.vote !== null))
+    throw new DomainError('Espere pelo menos um voto antes de revelar.');
+  return { ...room, revealEndsAt: endsAt, timerEndsAt: null };
+}
+export function revealVotes(room: Room): Room {
+  if (room.revealed) return { ...room, revealEndsAt: null };
+  if (
+    !room.revealEndsAt &&
+    !room.participants.some((p) => !p.spectator && p.vote !== null)
+  )
+    throw new DomainError('Espere pelo menos um voto antes de revelar.');
+  return { ...room, revealed: true, revealEndsAt: null, timerEndsAt: null };
+}
+export function summarizeVotes(votes: string[]) {
+  const numeric = votes.filter((v) => v.trim() !== '' && Number.isFinite(Number(v))).map(Number);
+  const distribution = votes.reduce<Record<string, number>>(
+    (counts, vote) => ({ ...counts, [vote]: (counts[vote] ?? 0) + 1 }),
+    {},
+  );
+  return {
+    average: numeric.length ? numeric.reduce((a, b) => a + b, 0) / numeric.length : null,
+    agreement: votes.length
+      ? Math.round((Math.max(...Object.values(distribution)) / votes.length) * 100)
+      : 0,
+    distribution,
+    total: votes.length,
+  };
+}
+export function nextRound(room: Room, roundId: string, finishedAt: string): Room {
+  const votes = room.participants
+    .filter((p) => !p.spectator && p.vote !== null)
+    .map((p) => p.vote!);
+  const title = room.issues.find((i) => i.id === room.activeIssueId)?.title ?? 'Votação livre';
+  const history =
+    room.revealed && votes.length
+      ? [{ id: roundId, number: room.round, title, votes, finishedAt }, ...room.history].slice(
+          0,
+          50,
+        )
+      : room.history;
+  return {
+    ...room,
+    round: room.round + 1,
+    revealed: false,
+    participants: room.participants.map((p) => ({ ...p, vote: null })),
+    history,
+    timerEndsAt: null,
+    revealEndsAt: null,
+  };
+}
