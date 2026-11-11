@@ -13,18 +13,22 @@ export function VotingTable({
   room,
   currentId,
   busy,
+  shakingId,
   onReveal,
   onCompleteReveal,
   onRestart,
   onInvite,
+  onPoke,
 }: {
   room: Room;
   currentId: string;
   busy: boolean;
+  shakingId?: string | null;
   onReveal: () => void;
   onCompleteReveal: () => void;
   onRestart: () => void;
   onInvite: () => void;
+  onPoke?: (participant: { id: string; name: string }) => void;
 }) {
   const voters = room.participants.filter((participant) => !participant.spectator);
   const voted = voters.filter((participant) => participant.voted).length;
@@ -91,7 +95,13 @@ export function VotingTable({
               index={index}
               revealed={room.revealed}
               revealing={revealing}
+              poked={shakingId === participant.id}
               side={seat.side}
+              onPoke={
+                onPoke && participant.id !== currentId
+                  ? () => onPoke({ id: participant.id, name: participant.name })
+                  : undefined
+              }
               style={
                 {
                   '--seat-x': `${seat.x}%`,

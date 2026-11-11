@@ -132,7 +132,7 @@ describe('chat', () => {
 });
 describe('estatísticas', () => {
   it('calcula média incluindo zero e excluindo cartas especiais', () =>
-    expect(summarizeVotes(['0', '5', '8', '?', '☕']).average).toBeCloseTo(13 / 3));
+    expect(summarizeVotes(['0', '5', '8', '🃏', '☕']).average).toBeCloseTo(13 / 3));
   it('calcula concordância pela carta mais votada', () =>
     expect(summarizeVotes(['5', '5', '8']).agreement).toBe(67));
   it('não inventa média numérica para camisetas', () =>

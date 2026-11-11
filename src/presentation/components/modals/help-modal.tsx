@@ -23,7 +23,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
           <div>
             <strong className="text-[13px]">Cada pessoa escolhe uma carta</strong>
             <p className="mt-1 text-xs text-muted">
-              Os números representam esforço relativo. Use ? se precisar conversar e ☕ para pedir
+              Os números representam esforço relativo. Use 🃏 se precisar conversar e ☕ para pedir
               uma pausa.
             </p>
           </div>

@@ -19,9 +19,10 @@ import {
   VotingDeck,
   VotingTable,
 } from '../components/room';
-import { Brand, Button, ErrorMessage, LargeIcon, TextButton } from '../components/ui';
+import { Brand, Button, ErrorMessage, LargeIcon, TextButton, ToastViewport } from '../components/ui';
 import { useAction } from '../hooks/use-action';
 import { useRoom } from '../hooks/use-room';
+import { useRoomPoke } from '../hooks/use-room-poke';
 import { JoinPage } from './join-page';
 
 type ModalType = 'invite' | 'settings' | 'profile' | 'history' | 'help' | null;
@@ -101,6 +102,61 @@ function RoomSession({ roomId }: { roomId: string }) {
 
   if (!participant) return <JoinPage room={room} onJoin={setActor} />;
 
+  return (
+    <RoomPlaying
+      room={room}
+      participant={participant}
+      panelOpen={panelOpen}
+      panelTab={panelTab}
+      modal={modal}
+      busy={busy}
+      error={error}
+      run={run}
+      leave={leave}
+      setModal={setModal}
+      openPanelTab={openPanelTab}
+      setPanelOpen={setPanelOpen}
+      setPanelTab={setPanelTab}
+    />
+  );
+}
+
+function RoomPlaying({
+  room,
+  participant,
+  panelOpen,
+  panelTab,
+  modal,
+  busy,
+  error,
+  run,
+  leave,
+  setModal,
+  openPanelTab,
+  setPanelOpen,
+  setPanelTab,
+}: {
+  room: NonNullable<ReturnType<typeof useRoom>['room']>;
+  participant: NonNullable<
+    NonNullable<ReturnType<typeof useRoom>['room']>['participants'][number]
+  >;
+  panelOpen: boolean;
+  panelTab: SidePanelTab;
+  modal: ModalType;
+  busy: boolean;
+  error: string;
+  run: ReturnType<typeof useAction>['run'];
+  leave: () => Promise<void>;
+  setModal: (modal: ModalType) => void;
+  openPanelTab: (tab: SidePanelTab) => void;
+  setPanelOpen: (open: boolean) => void;
+  setPanelTab: (tab: SidePanelTab) => void;
+}) {
+  const { poke, shakingId } = useRoomPoke(
+    room.id,
+    { id: participant.id, name: participant.name },
+    true,
+  );
   const activeIssue = room.issues.find((issue) => issue.id === room.activeIssueId);
   const voted = room.participants.filter((entry) => !entry.spectator && entry.voted).length;
   const voters = room.participants.filter((entry) => !entry.spectator).length;
@@ -119,7 +175,8 @@ function RoomSession({ roomId }: { roomId: string }) {
         onOpenPanelTab={openPanelTab}
       />
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-10 max-[1200px]:px-7 max-[640px]:px-[18px]">
+        <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-10 max-[1200px]:px-7 max-[640px]:px-[18px]">
+          <ToastViewport />
           <div className="flex shrink-0 items-center justify-between gap-4 pt-3">
             <div className="flex items-center gap-2.5 text-[11px]">
               <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Rodada {room.round}
@@ -142,12 +199,14 @@ function RoomSession({ roomId }: { roomId: string }) {
             room={room}
             currentId={participant.id}
             busy={busy}
+            shakingId={shakingId}
             onReveal={() => void run(() => planning.reveal(room.id, participant.id))}
             onCompleteReveal={() => {
               void planning.completeReveal(room.id, participant.id).catch(() => {});
             }}
             onRestart={() => void run(() => planning.restart(room.id, participant.id))}
             onInvite={() => setModal('invite')}
+            onPoke={poke}
           />
           <div className="flex min-h-0 shrink-0 flex-col">
             {room.revealed ? (

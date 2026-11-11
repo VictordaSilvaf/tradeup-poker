@@ -1,6 +1,7 @@
 import { Component, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { HashRouter, Link, Route, Routes, useLocation } from 'react-router-dom';
+import { ToastProvider } from '../presentation/components/ui';
 import { HomePage } from '../presentation/pages/home-page';
 import { RoomPage } from '../presentation/pages/room-page';
 class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -32,24 +33,26 @@ function ScrollToTop() {
 export function App() {
   return (
     <ErrorBoundary>
-      <HashRouter>
-        <ScrollToTop />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/sala/:roomId" element={<RoomPage />} />
-          <Route
-            path="*"
-            element={
-              <main className="not-found">
-                <h1>Esse caminho não leva a uma mesa.</h1>
-                <Link to="/" className="button button-primary">
-                  Voltar ao início
-                </Link>
-              </main>
-            }
-          />
-        </Routes>
-      </HashRouter>
+      <ToastProvider>
+        <HashRouter>
+          <ScrollToTop />
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/sala/:roomId" element={<RoomPage />} />
+            <Route
+              path="*"
+              element={
+                <main className="not-found">
+                  <h1>Esse caminho não leva a uma mesa.</h1>
+                  <Link to="/" className="button button-primary">
+                    Voltar ao início
+                  </Link>
+                </main>
+              }
+            />
+          </Routes>
+        </HashRouter>
+      </ToastProvider>
     </ErrorBoundary>
   );
 }

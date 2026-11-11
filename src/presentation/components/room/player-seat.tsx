@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { Check, Coffee, Eye } from 'lucide-react';
+import { Check, Eye } from 'lucide-react';
 import type { Participant } from '../../../domain/room';
 import { cn } from '../../lib/cn';
 import { Avatar } from '../ui';
@@ -19,8 +19,10 @@ export function PlayerSeat({
   index,
   revealed,
   revealing,
+  poked,
   side,
   style,
+  onPoke,
 }: {
   participant: Participant;
   current: boolean;
@@ -28,10 +30,13 @@ export function PlayerSeat({
   index: number;
   revealed: boolean;
   revealing: boolean;
+  poked: boolean;
   side: SeatSide;
   style: CSSProperties;
+  onPoke?: () => void;
 }) {
   const hasVote = participant.voted;
+  const canPoke = Boolean(onPoke) && !current;
 
   return (
     <div
@@ -42,40 +47,50 @@ export function PlayerSeat({
       )}
       style={style}
     >
-      <div
+      <button
+        type="button"
+        disabled={!canPoke}
+        title={canPoke ? `Cutucar ${participant.name}` : undefined}
+        onClick={canPoke ? onPoke : undefined}
         className={cn(
-          'flex h-[60px] w-[41px] items-center justify-center rounded-sm border border-dashed border-[oklch(0.43_0.035_260)] bg-surface text-[22px] text-muted transition-[transform,background] duration-200',
+          'flex h-[60px] w-[41px] items-center justify-center rounded-sm border border-dashed border-[oklch(0.43_0.035_260)] bg-surface text-[22px] text-muted transition-[transform,background,box-shadow] duration-200',
           hasVote && 'border border-solid border-primary bg-[oklch(0.3_0.07_257)] text-primary',
           revealed && hasVote && 'translate-y-[-3px] bg-primary font-semibold text-primary-ink',
-          revealing && hasVote && 'animate-card-pulse',
+          revealing && hasVote && !poked && 'animate-card-pulse',
+          poked &&
+            'animate-seat-poke border-[oklch(0.72_0.1_55)] bg-[oklch(0.32_0.05_55)] text-[oklch(0.9_0.06_75)] shadow-[0_0_0_3px_oklch(0.72_0.1_55/0.18)]',
+          canPoke &&
+            'cursor-pointer hover:-translate-y-0.5 hover:border-[oklch(0.68_0.09_55)] hover:shadow-[0_8px_18px_oklch(0.2_0.04_55/0.28)]',
+          !canPoke && 'cursor-default disabled:opacity-100',
         )}
         aria-label={
-          participant.spectator
-            ? 'Observador'
-            : revealed && hasVote
-              ? `Voto: ${participant.vote}`
-              : hasVote
-                ? 'Já votou'
-                : 'Ainda não votou'
+          canPoke
+            ? `Cutucar ${participant.name}`
+            : participant.spectator
+              ? 'Observador'
+              : revealed && hasVote
+                ? `Voto: ${participant.vote}`
+                : hasVote
+                  ? 'Já votou'
+                  : 'Ainda não votou'
         }
       >
         {participant.spectator ? (
           <Eye size={20} />
         ) : revealed && hasVote ? (
-          participant.vote === '☕' ? (
-            <Coffee size={22} />
-          ) : (
-            participant.vote
-          )
+          <span className="leading-none">{participant.vote}</span>
         ) : hasVote ? (
           <Check size={23} />
         ) : (
           <span className="pb-2.5 tracking-widest">···</span>
         )}
-      </div>
+      </button>
       <div className="player-name mt-2 flex w-full items-center justify-center gap-1.5 text-[11px]">
         <Avatar name={participant.name} index={index} small />
-        <span className="max-w-[86px] overflow-hidden text-ellipsis whitespace-nowrap" title={participant.name}>
+        <span
+          className="max-w-[86px] overflow-hidden text-ellipsis whitespace-nowrap"
+          title={participant.name}
+        >
           {participant.name}
         </span>
         {current && <small className="text-[9px] text-muted">(você)</small>}

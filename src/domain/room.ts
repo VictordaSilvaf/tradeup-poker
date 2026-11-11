@@ -1,10 +1,10 @@
 export const DECKS = {
   fibonacci: {
     name: 'Fibonacci',
-    cards: ['0', '1', '2', '3', '5', '8', '13', '21', '34', '?', '☕'],
+    cards: ['0', '1', '2', '3', '5', '8', '13', '21', '34', '🃏', '☕'],
   },
-  simplified: { name: 'Simplificado', cards: ['1', '2', '3', '5', '8', '?', '☕'] },
-  tshirt: { name: 'Tamanhos de camiseta', cards: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '?', '☕'] },
+  simplified: { name: 'Simplificado', cards: ['1', '2', '3', '5', '8', '🃏', '☕'] },
+  tshirt: { name: 'Tamanhos de camiseta', cards: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '🃏', '☕'] },
 } as const;
 export type DeckId = keyof typeof DECKS;
 export type Participant = {

@@ -1,4 +1,3 @@
-import { Coffee } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
 export function VoteCard({
@@ -22,7 +21,7 @@ export function VoteCard({
       )}
       aria-pressed={selected}
       aria-label={
-        card === '☕' ? 'Pedir uma pausa' : card === '?' ? 'Votar: não sei' : `Votar ${card}`
+        card === '☕' ? 'Pedir uma pausa' : card === '🃏' ? 'Votar: não sei' : `Votar ${card}`
       }
       disabled={disabled}
       onClick={onClick}
@@ -33,16 +32,16 @@ export function VoteCard({
           selected && 'text-primary-ink',
         )}
       >
-        {card === '☕' ? '·' : card}
+        {card}
       </span>
-      <span>{card === '☕' ? <Coffee size={25} /> : card}</span>
+      <span className="leading-none">{card}</span>
       <span
         className={cn(
           'absolute right-1.5 bottom-1.5 rotate-180 text-[8px] leading-none text-muted',
           selected && 'text-primary-ink',
         )}
       >
-        {card === '☕' ? '·' : card}
+        {card}
       </span>
     </button>
   );
