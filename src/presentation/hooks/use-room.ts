@@ -1,42 +1,79 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { planning } from '../../app/dependencies';
-import type { Room } from '../../domain/room';
+import { maskRoomVotes, type Room } from '../../domain/room';
 import { session } from '../../infra/session';
 
 export function useRoom(id: string) {
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const roomRef = useRef<Room | null>(null);
+  const pendingMutations = useRef(0);
 
   useEffect(() => {
-    let active = true;
-    const refresh = async () => {
+    roomRef.current = room;
+  }, [room]);
+
+  const refresh = useCallback(
+    async (options?: { force?: boolean }) => {
       try {
         const viewerId = session.read(id);
         const result = await planning.findRoom(id, viewerId);
-        if (active) {
-          setRoom(result);
-          setError('');
-        }
+        if (!options?.force && pendingMutations.current > 0) return result;
+        setRoom(result);
+        roomRef.current = result;
+        setError('');
+        return result;
       } catch (loadError) {
-        if (active)
-          setError(
-            loadError instanceof Error ? loadError.message : 'Não foi possível carregar a sala.',
-          );
+        setError(
+          loadError instanceof Error ? loadError.message : 'Não foi possível carregar a sala.',
+        );
+        throw loadError;
       } finally {
-        if (active) setLoading(false);
+        setLoading(false);
       }
-    };
+    },
+    [id],
+  );
+
+  useEffect(() => {
     setLoading(true);
     const unsubscribe = planning.subscribe(id, () => {
-      void refresh();
+      void refresh().catch(() => {});
     });
-    void refresh();
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [id]);
+    void refresh().catch(() => {});
+    return unsubscribe;
+  }, [id, refresh]);
 
-  return { room, loading, error };
+  const mutate = useCallback(
+    async (transform: (current: Room) => Room, persist: () => Promise<Room>) => {
+      const current = roomRef.current;
+      if (!current) throw new Error('Sala não carregada.');
+
+      const optimistic = transform(current);
+      pendingMutations.current += 1;
+      setRoom(optimistic);
+      roomRef.current = optimistic;
+
+      try {
+        const saved = await persist();
+        const masked = maskRoomVotes(saved, session.read(id));
+        setRoom(masked);
+        roomRef.current = masked;
+        setError('');
+        return masked;
+      } catch (persistError) {
+        await refresh({ force: true }).catch(() => {});
+        throw persistError;
+      } finally {
+        pendingMutations.current = Math.max(0, pendingMutations.current - 1);
+        if (pendingMutations.current === 0) {
+          void refresh().catch(() => {});
+        }
+      }
+    },
+    [id, refresh],
+  );
+
+  return { room, loading, error, mutate, refresh };
 }

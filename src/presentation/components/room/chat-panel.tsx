@@ -9,7 +9,6 @@ import {
   Send,
   X,
 } from 'lucide-react';
-import { planning } from '../../../app/dependencies';
 import {
   MAX_CHAT_ATTACHMENTS,
   MAX_CHAT_MESSAGE_LENGTH,
@@ -130,17 +129,19 @@ export function ChatPanel({
   room,
   participant,
   active,
+  onSendMessage,
 }: {
   room: Room;
   participant: Participant;
   active: boolean;
+  onSendMessage: (text: string, attachments: ChatAttachment[]) => Promise<void>;
 }) {
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState<ChatAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState('');
-  const { run, busy, error, setError } = useAction();
+  const { error, setError } = useAction();
   const { typingUsers, notifyTyping } = useChatTyping(
     room.id,
     { id: participant.id, name: participant.name },
@@ -150,7 +151,7 @@ export function ChatPanel({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const formId = useId();
-  const canSend = Boolean(draft.trim() || pending.length) && !busy && !uploading;
+  const canSend = Boolean(draft.trim() || pending.length) && !uploading;
 
   useEffect(() => {
     if (!active) return;
@@ -167,13 +168,18 @@ export function ChatPanel({
     if (!canSend) return;
     const text = draft;
     const attachments = pending;
-    void run(async () => {
-      await planning.sendMessage(room.id, participant.id, text, attachments);
-      setDraft('');
-      setPending([]);
-      setLinkOpen(false);
-      setLinkValue('');
-      requestAnimationFrame(() => inputRef.current?.focus());
+    setDraft('');
+    setPending([]);
+    setLinkOpen(false);
+    setLinkValue('');
+    setError('');
+    requestAnimationFrame(() => inputRef.current?.focus());
+    void onSendMessage(text, attachments).catch((sendError) => {
+      setDraft(text);
+      setPending(attachments);
+      setError(
+        sendError instanceof Error ? sendError.message : 'Não foi possível enviar a mensagem.',
+      );
     });
   }
 
@@ -310,7 +316,7 @@ export function ChatPanel({
       <form
         className="mt-3 shrink-0 border-t border-border-subtle pt-3"
         onSubmit={submit}
-        aria-busy={busy || uploading}
+        aria-busy={uploading}
       >
         {pending.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5">
@@ -337,7 +343,6 @@ export function ChatPanel({
             maxLength={MAX_CHAT_MESSAGE_LENGTH}
             placeholder="Escreva, cole um link ou anexe um arquivo…"
             value={draft}
-            disabled={busy}
             onChange={(event) => {
               setDraft(event.target.value);
               notifyTyping();

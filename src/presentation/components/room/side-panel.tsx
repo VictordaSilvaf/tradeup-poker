@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ListTodo, MessageSquare, X } from 'lucide-react';
-import type { Participant, Room } from '../../../domain/room';
+import type { ChatAttachment, Participant, Room } from '../../../domain/room';
 import { cn } from '../../lib/cn';
 import { IconButton } from '../ui';
 import { ChatPanel } from './chat-panel';
@@ -34,12 +34,14 @@ export function SidePanel({
   tab,
   onTabChange,
   onClose,
+  onSendMessage,
 }: {
   room: Room;
   participant: Participant;
   tab: SidePanelTab;
   onTabChange: (tab: SidePanelTab) => void;
   onClose: () => void;
+  onSendMessage: (text: string, attachments: ChatAttachment[]) => Promise<void>;
 }) {
   const [width, setWidth] = useState(readStoredWidth);
   const [desktop, setDesktop] = useState(() => window.innerWidth > 1000);
@@ -150,7 +152,12 @@ export function SidePanel({
         {tab === 'issues' ? (
           <IssuesPanel room={room} actor={participant.id} />
         ) : (
-          <ChatPanel room={room} participant={participant} active={tab === 'chat'} />
+          <ChatPanel
+            room={room}
+            participant={participant}
+            active={tab === 'chat'}
+            onSendMessage={onSendMessage}
+          />
         )}
       </div>
     </aside>

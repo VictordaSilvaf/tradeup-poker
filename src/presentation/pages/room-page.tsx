@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Check, CircleHelp, History, Settings2, Users } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { planning } from '../../app/dependencies';
+import {
+  castVote,
+  postChatMessage,
+  type ChatAttachment,
+  type Room,
+} from '../../domain/room';
 import { session } from '../../infra/session';
 import {
   HelpModal,
@@ -33,12 +39,12 @@ export function RoomPage() {
 }
 
 function RoomSession({ roomId }: { roomId: string }) {
-  const { room, loading, error: loadError } = useRoom(roomId);
+  const { room, loading, error: loadError, mutate } = useRoom(roomId);
   const [actor, setActor] = useState(() => session.read(roomId));
   const [panelOpen, setPanelOpen] = useState(() => window.innerWidth > 1000);
   const [panelTab, setPanelTab] = useState<SidePanelTab>('chat');
   const [modal, setModal] = useState<ModalType>(null);
-  const { run, busy, error } = useAction();
+  const { run, busy, error, setError } = useAction();
   const navigate = useNavigate();
   const participant = room?.participants.find((entry) => entry.id === actor);
 
@@ -112,6 +118,8 @@ function RoomSession({ roomId }: { roomId: string }) {
       busy={busy}
       error={error}
       run={run}
+      setError={setError}
+      mutate={mutate}
       leave={leave}
       setModal={setModal}
       openPanelTab={openPanelTab}
@@ -130,22 +138,24 @@ function RoomPlaying({
   busy,
   error,
   run,
+  setError,
+  mutate,
   leave,
   setModal,
   openPanelTab,
   setPanelOpen,
   setPanelTab,
 }: {
-  room: NonNullable<ReturnType<typeof useRoom>['room']>;
-  participant: NonNullable<
-    NonNullable<ReturnType<typeof useRoom>['room']>['participants'][number]
-  >;
+  room: Room;
+  participant: Room['participants'][number];
   panelOpen: boolean;
   panelTab: SidePanelTab;
   modal: ModalType;
   busy: boolean;
   error: string;
   run: ReturnType<typeof useAction>['run'];
+  setError: ReturnType<typeof useAction>['setError'];
+  mutate: ReturnType<typeof useRoom>['mutate'];
   leave: () => Promise<void>;
   setModal: (modal: ModalType) => void;
   openPanelTab: (tab: SidePanelTab) => void;
@@ -160,6 +170,24 @@ function RoomPlaying({
   const activeIssue = room.issues.find((issue) => issue.id === room.activeIssueId);
   const voted = room.participants.filter((entry) => !entry.spectator && entry.voted).length;
   const voters = room.participants.filter((entry) => !entry.spectator).length;
+
+  function voteOptimistic(value: string) {
+    void mutate(
+      (current) => castVote(current, participant.id, value),
+      () => planning.vote(room.id, participant.id, value),
+    ).catch((voteError) => {
+      setError(voteError instanceof Error ? voteError.message : 'Não foi possível registrar o voto.');
+    });
+  }
+
+  async function sendMessageOptimistic(text: string, attachments: ChatAttachment[]) {
+    const messageId = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+    await mutate(
+      (current) => postChatMessage(current, participant.id, messageId, text, createdAt, attachments),
+      () => planning.sendMessage(room.id, participant.id, text, attachments, messageId),
+    );
+  }
 
   return (
     <div className="flex h-dvh max-h-dvh flex-col overflow-hidden">
@@ -237,8 +265,8 @@ function RoomPlaying({
             <VotingDeck
               room={room}
               participant={participant}
-              busy={busy || Boolean(room.revealEndsAt)}
-              onVote={(value) => void run(() => planning.vote(room.id, participant.id, value))}
+              busy={Boolean(room.revealEndsAt)}
+              onVote={voteOptimistic}
             />
             <footer className="mt-1.5 flex items-center gap-5 border-t border-border-subtle py-2.5 text-[9px] text-subtle">
               <span className="mr-auto flex items-center gap-1.5">
@@ -269,6 +297,7 @@ function RoomPlaying({
             tab={panelTab}
             onTabChange={setPanelTab}
             onClose={() => setPanelOpen(false)}
+            onSendMessage={sendMessageOptimistic}
           />
         )}
       </div>

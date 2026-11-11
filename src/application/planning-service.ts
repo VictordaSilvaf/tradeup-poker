@@ -184,12 +184,18 @@ export class PlanningService {
           : this.clock.now().getTime() + 180_000,
     }));
   }
-  sendMessage(id: string, actor: string, text: string, attachments: ChatAttachment[] = []) {
+  sendMessage(
+    id: string,
+    actor: string,
+    text: string,
+    attachments: ChatAttachment[] = [],
+    messageId?: string,
+  ) {
     return this.change(id, actor, (room) =>
       postChatMessage(
         room,
         actor,
-        this.identity.newId(),
+        messageId ?? this.identity.newId(),
         text,
         this.clock.now().toISOString(),
         attachments,
