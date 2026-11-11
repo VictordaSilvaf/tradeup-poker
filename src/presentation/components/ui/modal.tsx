@@ -27,7 +27,7 @@ export function Modal({
     <dialog
       ref={ref}
       className={cn(
-        'max-h-[calc(100dvh-48px)] overflow-y-auto rounded-lg border border-border bg-surface p-[26px] text-text backdrop:bg-[oklch(0.08_0.015_260/0.8)]',
+        'fixed inset-0 m-auto max-h-[calc(100dvh-48px)] overflow-y-auto rounded-lg border border-border bg-surface p-[26px] text-text backdrop:bg-[oklch(0.08_0.015_260/0.8)]',
         wide ? 'w-[min(660px,calc(100%-32px))]' : 'w-[min(460px,calc(100%-32px))]',
       )}
       aria-labelledby={titleId}

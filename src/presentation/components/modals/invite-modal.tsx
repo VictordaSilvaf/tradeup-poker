@@ -42,9 +42,9 @@ export function InviteModal({ room, onClose }: { room: Room; onClose: () => void
         Código da sala <code className="tracking-wider text-text">{room.id}</code>
       </p>
       <ErrorMessage message={error} />
-      <InfoNote title="Teste em outra aba deste navegador">
-        Esta versão não tem servidor. O convite funciona entre abas do mesmo navegador e endereço,
-        mas ainda não conecta outros dispositivos.
+      <InfoNote title="Funciona em qualquer dispositivo">
+        Quem abrir o link entra na mesma sala em tempo real — celular, outro computador ou outra
+        aba. Peça para cada pessoa informar o próprio nome ao entrar.
       </InfoNote>
     </Modal>
   );
