@@ -37,6 +37,30 @@ const roomSchema = z.object({
       finishedAt: z.string(),
     }),
   ),
+  messages: z
+    .array(
+      z.object({
+        id: z.string(),
+        authorId: z.string(),
+        authorName: z.string(),
+        text: z.string(),
+        createdAt: z.string(),
+        attachments: z
+          .array(
+            z.object({
+              id: z.string(),
+              kind: z.enum(['file', 'link']),
+              name: z.string(),
+              url: z.string(),
+              mimeType: z.string().optional(),
+              size: z.number().optional(),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .optional()
+    .transform((value) => value ?? []),
   createdAt: z.string(),
   timerEndsAt: z.number().nullable(),
   revealEndsAt: z.number().nullable().optional().transform((value) => value ?? null),
@@ -47,6 +71,7 @@ const CHANGE = 'tradeuppoker:room-changed';
 function normalizeRoom(room: z.infer<typeof roomSchema>): Room {
   return {
     ...room,
+    messages: room.messages ?? [],
     revealEndsAt: room.revealEndsAt ?? null,
     participants: room.participants.map((participant) => ({
       ...participant,

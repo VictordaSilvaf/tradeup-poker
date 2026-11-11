@@ -4,6 +4,7 @@ import {
   castVote,
   maskRoomVotes,
   nextRound,
+  postChatMessage,
   requiredName,
   revealVotes,
   summarizeVotes,
@@ -23,6 +24,7 @@ const room = (): Room => ({
   issues: [],
   activeIssueId: null,
   history: [],
+  messages: [],
   createdAt: '2026-01-01T00:00:00Z',
   timerEndsAt: null,
   revealEndsAt: null,
@@ -94,6 +96,38 @@ describe('máscara de votos', () => {
     const masked = maskRoomVotes(voted, 'ana');
     expect(masked.participants[0]).toMatchObject({ vote: '5', voted: true });
     expect(masked.participants[1]).toMatchObject({ vote: null, voted: true });
+  });
+});
+describe('chat', () => {
+  it('adiciona mensagem normalizada do participante', () => {
+    const next = postChatMessage(room(), 'ana', 'm1', '  Olá   time  ', '2026-01-01T00:00:00Z');
+    expect(next.messages).toEqual([
+      {
+        id: 'm1',
+        authorId: 'ana',
+        authorName: 'Ana',
+        text: 'Olá time',
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+    ]);
+  });
+  it('rejeita mensagem vazia', () =>
+    expect(() => postChatMessage(room(), 'ana', 'm1', '   ', '2026-01-01T00:00:00Z')).toThrow(
+      'Escreva uma mensagem',
+    ));
+  it('aceita anexo sem texto', () => {
+    const next = postChatMessage(room(), 'ana', 'm1', '  ', '2026-01-01T00:00:00Z', [
+      {
+        id: 'a1',
+        kind: 'link',
+        name: 'Docs',
+        url: 'https://example.com/docs',
+      },
+    ]);
+    expect(next.messages[0]).toMatchObject({
+      text: '',
+      attachments: [{ kind: 'link', url: 'https://example.com/docs' }],
+    });
   });
 });
 describe('estatísticas', () => {

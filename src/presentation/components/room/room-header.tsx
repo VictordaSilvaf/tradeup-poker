@@ -1,27 +1,30 @@
-import { ChevronDown, History, ListTodo, UserPlus } from 'lucide-react';
+import { ChevronDown, History, ListTodo, MessageSquare, UserPlus } from 'lucide-react';
 import { isRealtimeEnabled } from '../../../app/dependencies';
 import type { Participant, Room } from '../../../domain/room';
 import { Avatar, Brand, Button, IconButton, StatusDot } from '../ui';
+import type { SidePanelTab } from './side-panel';
 import { Timer } from './timer';
 
 export function RoomHeader({
   room,
   participant,
   panelOpen,
+  panelTab,
   busy,
   onLeave,
   onToggleTimer,
   onOpenModal,
-  onTogglePanel,
+  onOpenPanelTab,
 }: {
   room: Room;
   participant: Participant;
   panelOpen: boolean;
+  panelTab: SidePanelTab;
   busy: boolean;
   onLeave: () => void;
   onToggleTimer: () => void;
   onOpenModal: (modal: 'invite' | 'settings' | 'profile' | 'history') => void;
-  onTogglePanel: () => void;
+  onOpenPanelTab: (tab: SidePanelTab) => void;
 }) {
   return (
     <header className="sticky top-0 z-20 flex min-h-[78px] items-center gap-[22px] border-b border-border-subtle bg-bg px-7 py-3.5 max-[1200px]:gap-4 max-[1200px]:px-[22px] max-[640px]:min-h-[70px] max-[640px]:flex-wrap max-[640px]:gap-2.5 max-[640px]:px-4 max-[640px]:py-3">
@@ -71,15 +74,30 @@ export function RoomHeader({
           </span>
           <ChevronDown size={14} className="max-[640px]:hidden" />
         </button>
-        <Button onClick={() => onOpenModal('invite')} className="min-h-[38px] px-3.5 text-xs whitespace-nowrap max-[640px]:h-[34px] max-[640px]:min-h-[34px] max-[640px]:w-[34px] max-[640px]:p-1.5">
+        <Button
+          onClick={() => onOpenModal('invite')}
+          className="min-h-[38px] px-3.5 text-xs whitespace-nowrap max-[640px]:h-[34px] max-[640px]:min-h-[34px] max-[640px]:w-[34px] max-[640px]:p-1.5"
+        >
           <UserPlus size={17} />
           <span className="max-[640px]:hidden">Convidar pessoas</span>
         </Button>
         <IconButton
-          active={panelOpen}
-          aria-label={panelOpen ? 'Ocultar histórias' : 'Mostrar histórias'}
-          aria-expanded={panelOpen}
-          onClick={onTogglePanel}
+          active={panelOpen && panelTab === 'chat'}
+          aria-label={panelOpen && panelTab === 'chat' ? 'Chat aberto' : 'Abrir chat'}
+          aria-expanded={panelOpen && panelTab === 'chat'}
+          title="Chat"
+          onClick={() => onOpenPanelTab('chat')}
+        >
+          <MessageSquare size={20} />
+        </IconButton>
+        <IconButton
+          active={panelOpen && panelTab === 'issues'}
+          aria-label={
+            panelOpen && panelTab === 'issues' ? 'Histórias abertas' : 'Mostrar histórias'
+          }
+          aria-expanded={panelOpen && panelTab === 'issues'}
+          title="Histórias"
+          onClick={() => onOpenPanelTab('issues')}
         >
           <ListTodo size={21} />
         </IconButton>

@@ -33,6 +33,7 @@ const makeRoom = (): Room => ({
   issues: [],
   activeIssueId: null,
   history: [],
+  messages: [],
   createdAt: '2026-01-01T00:00:00Z',
   timerEndsAt: null,
   revealEndsAt: null,

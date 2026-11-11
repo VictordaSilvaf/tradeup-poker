@@ -158,3 +158,6 @@ revoke all on function public.broadcast_room_change() from public, anon, authent
 -- - Código da sala é o segredo compartilhado (RPC anon).
 -- - Máscara de votos no client (maskRoomVotes); get_room precisa do payload
 --   completo para optimistic locking em save_room.
+--
+-- Anexos do chat: bucket storage público `chat-attachments`
+-- (ver migration chat_attachments_storage).

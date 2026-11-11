@@ -96,4 +96,14 @@ describe('casos de uso', () => {
     );
     expect((await service.toggleTimer(room.id, participant.id)).timerEndsAt).toBeNull();
   });
+  it('envia mensagens no chat da sala', async () => {
+    const { room, participant } = await service.createRoom('Produto', 'Ana', 'fibonacci');
+    const updated = await service.sendMessage(room.id, participant.id, '  Vamos alinhar  ');
+    expect(updated.messages).toHaveLength(1);
+    expect(updated.messages[0]).toMatchObject({
+      authorId: participant.id,
+      authorName: 'Ana',
+      text: 'Vamos alinhar',
+    });
+  });
 });

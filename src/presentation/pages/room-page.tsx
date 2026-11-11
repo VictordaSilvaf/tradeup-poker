@@ -11,10 +11,11 @@ import {
   SettingsModal,
 } from '../components/modals';
 import {
-  IssuesPanel,
   Results,
   RoomHeader,
   RoundProgress,
+  SidePanel,
+  type SidePanelTab,
   VotingDeck,
   VotingTable,
 } from '../components/room';
@@ -34,6 +35,7 @@ function RoomSession({ roomId }: { roomId: string }) {
   const { room, loading, error: loadError } = useRoom(roomId);
   const [actor, setActor] = useState(() => session.read(roomId));
   const [panelOpen, setPanelOpen] = useState(() => window.innerWidth > 1000);
+  const [panelTab, setPanelTab] = useState<SidePanelTab>('chat');
   const [modal, setModal] = useState<ModalType>(null);
   const { run, busy, error } = useAction();
   const navigate = useNavigate();
@@ -51,6 +53,15 @@ function RoomSession({ roomId }: { roomId: string }) {
     await planning.leave(roomId, actor);
     session.clear(roomId);
     navigate('/');
+  }
+
+  function openPanelTab(tab: SidePanelTab) {
+    if (panelOpen && panelTab === tab) {
+      setPanelOpen(false);
+      return;
+    }
+    setPanelTab(tab);
+    setPanelOpen(true);
   }
 
   if (loading)
@@ -100,14 +111,15 @@ function RoomSession({ roomId }: { roomId: string }) {
         room={room}
         participant={participant}
         panelOpen={panelOpen}
+        panelTab={panelTab}
         busy={busy}
         onLeave={() => void run(leave)}
         onToggleTimer={() => void run(() => planning.toggleTimer(room.id, participant.id))}
         onOpenModal={setModal}
-        onTogglePanel={() => setPanelOpen(!panelOpen)}
+        onOpenPanelTab={openPanelTab}
       />
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden relative px-10 max-[1200px]:px-7 max-[640px]:px-[18px]">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-10 max-[1200px]:px-7 max-[640px]:px-[18px]">
           <div className="flex shrink-0 items-center justify-between gap-4 pt-3">
             <div className="flex items-center gap-2.5 text-[11px]">
               <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Rodada {room.round}
@@ -171,8 +183,8 @@ function RoomSession({ roomId }: { roomId: string }) {
             />
             <footer className="mt-1.5 flex items-center gap-5 border-t border-border-subtle py-2.5 text-[9px] text-subtle">
               <span className="mr-auto flex items-center gap-1.5">
-                <span className="inline-block h-1 w-1 rounded-full bg-success" /> Salvo neste
-                navegador
+                <span className="inline-block h-1 w-1 rounded-full bg-success" /> Sincronizado em
+                tempo real
               </span>
               <button
                 className="flex items-center gap-1.5 border-0 bg-transparent p-0 text-[9px] text-muted"
@@ -192,7 +204,13 @@ function RoomSession({ roomId }: { roomId: string }) {
           </div>
         </main>
         {panelOpen && (
-          <IssuesPanel room={room} actor={participant.id} onClose={() => setPanelOpen(false)} />
+          <SidePanel
+            room={room}
+            participant={participant}
+            tab={panelTab}
+            onTabChange={setPanelTab}
+            onClose={() => setPanelOpen(false)}
+          />
         )}
       </div>
       {modal === 'invite' && <InviteModal room={room} onClose={() => setModal(null)} />}

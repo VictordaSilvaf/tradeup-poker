@@ -4,13 +4,14 @@ import {
   DECKS,
   DomainError,
   nextRound,
+  postChatMessage,
   REVEAL_COUNTDOWN_MS,
   requiredName,
   requireParticipant,
   revealVotes,
   summarizeVotes,
 } from '../domain/room';
-import type { DeckId, Room } from '../domain/room';
+import type { ChatAttachment, DeckId, Room } from '../domain/room';
 import type { Clock, IdentityProvider, RoomRepository } from './ports';
 
 export class PlanningService {
@@ -48,6 +49,7 @@ export class PlanningService {
       issues: [],
       activeIssueId: null,
       history: [],
+      messages: [],
       createdAt: this.clock.now().toISOString(),
       timerEndsAt: null,
       revealEndsAt: null,
@@ -181,5 +183,17 @@ export class PlanningService {
           ? null
           : this.clock.now().getTime() + 180_000,
     }));
+  }
+  sendMessage(id: string, actor: string, text: string, attachments: ChatAttachment[] = []) {
+    return this.change(id, actor, (room) =>
+      postChatMessage(
+        room,
+        actor,
+        this.identity.newId(),
+        text,
+        this.clock.now().toISOString(),
+        attachments,
+      ),
+    );
   }
 }

@@ -1,21 +1,13 @@
 import { useState, type FormEvent } from 'react';
-import { Check, ChevronRight, ListTodo, Plus, X } from 'lucide-react';
+import { Check, ChevronRight, ListTodo, Plus } from 'lucide-react';
 import type { Room } from '../../../domain/room';
 import { planning } from '../../../app/dependencies';
 import { useAction } from '../../hooks/use-action';
 import { cn } from '../../lib/cn';
 import { formatNumber } from '../../lib/format';
-import { Button, ErrorMessage, IconButton } from '../ui';
+import { Button, ErrorMessage } from '../ui';
 
-export function IssuesPanel({
-  room,
-  actor,
-  onClose,
-}: {
-  room: Room;
-  actor: string;
-  onClose: () => void;
-}) {
+export function IssuesPanel({ room, actor }: { room: Room; actor: string }) {
   const [title, setTitle] = useState('');
   const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState<'all' | 'open' | 'done'>('all');
@@ -35,22 +27,8 @@ export function IssuesPanel({
   }
 
   return (
-    <aside
-      className="flex w-[300px] shrink-0 flex-col border-l border-border-subtle bg-[oklch(0.18_0.02_266)] px-[22px] pt-[26px] pb-6 max-[1200px]:w-[270px] max-[1200px]:px-[18px] max-[1000px]:fixed max-[1000px]:top-[78px] max-[1000px]:right-0 max-[1000px]:bottom-0 max-[1000px]:z-10 max-[1000px]:w-[310px] max-[1000px]:overflow-y-auto max-[1000px]:shadow-[-12px_0_30px_oklch(0.08_0.01_260/0.5)] max-[640px]:top-[70px] max-[640px]:max-w-full"
-      aria-label="Histórias da sessão"
-    >
-      <div className="flex items-center justify-between">
-        <h2 className="m-0 flex items-center gap-2 text-[13px] font-medium">
-          <ListTodo size={18} className="text-muted" /> Histórias{' '}
-          <span className="rounded bg-surface-raised px-1.5 py-0.5 text-[10px] text-muted">
-            {room.issues.length}
-          </span>
-        </h2>
-        <IconButton aria-label="Recolher histórias" onClick={onClose}>
-          <X size={18} />
-        </IconButton>
-      </div>
-      <p className="mt-2 text-[11px] text-muted">Um objetivo de cada vez.</p>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <p className="text-[11px] text-muted">Um objetivo de cada vez.</p>
       <div className="mt-4 flex gap-1 rounded-sm bg-bg p-1">
         {(['all', 'open', 'done'] as const).map((value) => (
           <button
@@ -66,7 +44,7 @@ export function IssuesPanel({
           </button>
         ))}
       </div>
-      <div className="mt-4 flex min-h-0 flex-1 flex-col gap-2">
+      <div className="mt-4 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
         {visible.map((issue, index) => (
           <button
             key={issue.id}
@@ -116,7 +94,10 @@ export function IssuesPanel({
           </div>
         )}
         {adding ? (
-          <form className="flex flex-col gap-2.5 rounded-sm border border-border bg-surface p-3" onSubmit={submit}>
+          <form
+            className="flex flex-col gap-2.5 rounded-sm border border-border bg-surface p-3"
+            onSubmit={submit}
+          >
             <label htmlFor="issue-title" className="text-xs font-semibold">
               Título da história
             </label>
@@ -167,6 +148,6 @@ export function IssuesPanel({
           rodada.
         </p>
       </div>
-    </aside>
+    </div>
   );
 }

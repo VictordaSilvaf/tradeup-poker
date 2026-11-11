@@ -17,5 +17,5 @@ export function useAction() {
       setBusy(false);
     }
   }
-  return { run, busy, error, clearError: () => setError('') };
+  return { run, busy, error, setError, clearError: () => setError('') };
 }

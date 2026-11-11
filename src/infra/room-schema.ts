@@ -35,6 +35,29 @@ export const roomPayloadSchema = z.object({
       finishedAt: z.string(),
     }),
   ),
+  messages: z
+    .array(
+      z.object({
+        id: z.string(),
+        authorId: z.string(),
+        authorName: z.string(),
+        text: z.string(),
+        createdAt: z.string(),
+        attachments: z
+          .array(
+            z.object({
+              id: z.string(),
+              kind: z.enum(['file', 'link']),
+              name: z.string(),
+              url: z.string(),
+              mimeType: z.string().optional(),
+              size: z.number().optional(),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .optional(),
   createdAt: z.string(),
   timerEndsAt: z.number().nullable(),
   revealEndsAt: z.number().nullable().optional(),
@@ -45,6 +68,7 @@ export function parseRoomPayload(payload: unknown): Room {
   if (!result.success) throw new Error('Invalid room payload');
   return {
     ...result.data,
+    messages: result.data.messages ?? [],
     revealEndsAt: result.data.revealEndsAt ?? null,
     participants: result.data.participants.map((participant) => ({
       ...participant,

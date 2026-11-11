@@ -24,6 +24,26 @@ export type Round = {
   votes: string[];
   finishedAt: string;
 };
+export type ChatAttachment = {
+  id: string;
+  kind: 'file' | 'link';
+  name: string;
+  url: string;
+  mimeType?: string;
+  size?: number;
+};
+export type ChatMessage = {
+  id: string;
+  authorId: string;
+  authorName: string;
+  text: string;
+  createdAt: string;
+  attachments?: ChatAttachment[];
+};
+export const MAX_CHAT_MESSAGES = 100;
+export const MAX_CHAT_MESSAGE_LENGTH = 280;
+export const MAX_CHAT_ATTACHMENTS = 3;
+export const MAX_CHAT_FILE_BYTES = 5 * 1024 * 1024;
 export type Room = {
   id: string;
   name: string;
@@ -35,6 +55,7 @@ export type Room = {
   issues: Issue[];
   activeIssueId: string | null;
   history: Round[];
+  messages: ChatMessage[];
   createdAt: string;
   timerEndsAt: number | null;
   /** Timestamp when the reveal countdown finishes and cards flip. */
@@ -129,5 +150,70 @@ export function maskRoomVotes(room: Room, viewerId?: string | null): Room {
         ? participant
         : { ...participant, vote: null, voted: participant.voted },
     ),
+  };
+}
+
+export function requiredChatText(value: string, allowEmpty = false): string {
+  const text = value.trim().replace(/\s+/g, ' ');
+  if (!text && !allowEmpty) throw new DomainError('Escreva uma mensagem antes de enviar.');
+  if (text.length > MAX_CHAT_MESSAGE_LENGTH)
+    throw new DomainError(`Use até ${MAX_CHAT_MESSAGE_LENGTH} caracteres na mensagem.`);
+  return text;
+}
+
+export function normalizeChatAttachments(attachments: ChatAttachment[] = []): ChatAttachment[] {
+  if (attachments.length > MAX_CHAT_ATTACHMENTS) {
+    throw new DomainError(`Envie no máximo ${MAX_CHAT_ATTACHMENTS} anexos por mensagem.`);
+  }
+  return attachments.map((attachment) => {
+    const name = attachment.name.trim();
+    const url = attachment.url.trim();
+    if (!name || !url) throw new DomainError('Anexo inválido.');
+    if (attachment.kind === 'link') {
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          throw new Error('bad protocol');
+        }
+      } catch {
+        throw new DomainError('Informe um link válido (http ou https).');
+      }
+    }
+    if (attachment.size != null && attachment.size > MAX_CHAT_FILE_BYTES) {
+      throw new DomainError('Cada arquivo pode ter no máximo 5 MB.');
+    }
+    return {
+      ...attachment,
+      name: name.slice(0, 120),
+      url,
+    };
+  });
+}
+
+export function postChatMessage(
+  room: Room,
+  authorId: string,
+  messageId: string,
+  text: string,
+  createdAt: string,
+  attachments: ChatAttachment[] = [],
+): Room {
+  const author = requireParticipant(room, authorId);
+  const cleanAttachments = normalizeChatAttachments(attachments);
+  const clean = requiredChatText(text, cleanAttachments.length > 0);
+  if (!clean && !cleanAttachments.length) {
+    throw new DomainError('Escreva uma mensagem ou anexe um arquivo/link.');
+  }
+  const message: ChatMessage = {
+    id: messageId,
+    authorId: author.id,
+    authorName: author.name,
+    text: clean,
+    createdAt,
+    ...(cleanAttachments.length ? { attachments: cleanAttachments } : {}),
+  };
+  return {
+    ...room,
+    messages: [...room.messages, message].slice(-MAX_CHAT_MESSAGES),
   };
 }

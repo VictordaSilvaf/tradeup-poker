@@ -1,8 +1,10 @@
+export { ChatPanel } from './chat-panel';
 export { IssuesPanel } from './issues-panel';
 export { Results } from './results';
 export { RoomHeader } from './room-header';
 export { RoundProgress } from './round-progress';
 export { seatingLayout } from './seating-layout';
+export { SidePanel, type SidePanelTab } from './side-panel';
 export { Timer } from './timer';
 export { VoteCard } from './vote-card';
 export { VotingDeck } from './voting-deck';
