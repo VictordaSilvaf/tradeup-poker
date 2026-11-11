@@ -18,7 +18,7 @@ export function JoinPage({ room, onJoin }: { room: Room; onJoin: (id: string) =>
     void run(async () => {
       const result = await planning.joinRoom(room.id, name, spectator);
       try {
-        session.save(room.id, result.participant.id);
+        session.save(room.id, result.participant);
         recentRooms.remember(room.id);
       } catch (saveError) {
         await planning.leave(room.id, result.participant.id);

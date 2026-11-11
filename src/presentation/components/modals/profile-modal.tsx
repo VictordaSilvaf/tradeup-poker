@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { LogOut } from 'lucide-react';
 import type { Participant, Room } from '../../../domain/room';
 import { planning } from '../../../app/dependencies';
+import { session } from '../../../infra/session';
 import { useAction } from '../../hooks/use-action';
 import { Button, CheckLabel, ErrorMessage, Field, Modal } from '../ui';
 
@@ -24,6 +25,7 @@ export function ProfileModal({
     event.preventDefault();
     void run(async () => {
       await planning.updateProfile(room.id, participant.id, name, spectator);
+      session.save(room.id, { id: participant.id, name, spectator });
       onClose();
     });
   }

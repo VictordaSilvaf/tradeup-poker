@@ -37,7 +37,7 @@ export function HomePage() {
           ? await planning.createRoom(roomName, playerName, deck)
           : await planning.joinRoom(parseRoomCode(roomCode), playerName);
       try {
-        session.save(result.room.id, result.participant.id);
+        session.save(result.room.id, result.participant);
         recentRooms.remember(result.room.id);
       } catch (saveError) {
         await planning.leave(result.room.id, result.participant.id);

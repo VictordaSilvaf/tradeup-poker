@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   beginReveal,
   castVote,
+  isParticipantOnline,
   maskRoomVotes,
   nextRound,
   postChatMessage,
+  presentParticipants,
   requiredName,
   revealVotes,
   summarizeVotes,
+  touchPresence,
 } from './room';
 import type { Room } from './room';
 const room = (): Room => ({
@@ -16,8 +19,8 @@ const room = (): Room => ({
   ownerId: 'ana',
   deck: 'fibonacci',
   participants: [
-    { id: 'ana', name: 'Ana', vote: null, voted: false, spectator: false },
-    { id: 'rui', name: 'Rui', vote: null, voted: false, spectator: false },
+    { id: 'ana', name: 'Ana', vote: null, voted: false, spectator: false, lastSeenAt: 1_700_000_000_000 },
+    { id: 'rui', name: 'Rui', vote: null, voted: false, spectator: false, lastSeenAt: 1_700_000_000_000 },
   ],
   revealed: false,
   round: 1,
@@ -96,6 +99,23 @@ describe('máscara de votos', () => {
     const masked = maskRoomVotes(voted, 'ana');
     expect(masked.participants[0]).toMatchObject({ vote: '5', voted: true });
     expect(masked.participants[1]).toMatchObject({ vote: null, voted: true });
+  });
+});
+describe('presença', () => {
+  it('marca o participante como online e remove quem ficou offline', () => {
+    const now = 1_700_000_100_000;
+    const stale = {
+      ...room(),
+      participants: [
+        { id: 'ana', name: 'Ana', vote: null, voted: false, spectator: false, lastSeenAt: now - 10_000 },
+        { id: 'rui', name: 'Rui', vote: null, voted: false, spectator: false, lastSeenAt: now - 120_000 },
+      ],
+    };
+    const next = touchPresence(stale, 'ana', now);
+    expect(next.participants).toHaveLength(1);
+    expect(next.participants[0]).toMatchObject({ id: 'ana', lastSeenAt: now });
+    expect(isParticipantOnline(next.participants[0], now)).toBe(true);
+    expect(presentParticipants(stale.participants, 'ana', now).map((p) => p.id)).toEqual(['ana']);
   });
 });
 describe('chat', () => {

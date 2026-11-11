@@ -106,4 +106,19 @@ describe('casos de uso', () => {
       text: 'Vamos alinhar',
     });
   });
+  it('atualiza presença e remove participantes offline no heartbeat', async () => {
+    let id = 0;
+    let now = new Date('2026-01-01T00:00:00Z').getTime();
+    const presenceService = new PlanningService(
+      new MemoryRepository(),
+      { newId: () => `presence${++id}` },
+      { now: () => new Date(now) },
+    );
+    const { room, participant } = await presenceService.createRoom('Produto', 'Ana', 'fibonacci');
+    await presenceService.joinRoom(room.id, 'Rui');
+    now += 120_000;
+    const beat = await presenceService.heartbeat(room.id, participant.id);
+    expect(beat.participants.map((entry) => entry.id)).toEqual([participant.id]);
+    expect(beat.participants[0].lastSeenAt).toBe(now);
+  });
 });

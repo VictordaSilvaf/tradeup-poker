@@ -15,7 +15,11 @@ export type Participant = {
   /** Whether the participant has cast a vote (always visible). */
   voted: boolean;
   spectator: boolean;
+  /** Epoch ms of last presence heartbeat. */
+  lastSeenAt?: number;
 };
+export const PRESENCE_ONLINE_MS = 25_000;
+export const PRESENCE_PRUNE_MS = 50_000;
 export type Issue = { id: string; title: string; done: boolean; estimate: number | null };
 export type Round = {
   id: string;
@@ -62,6 +66,41 @@ export type Room = {
   revealEndsAt: number | null;
 };
 export class DomainError extends Error {}
+
+export function isParticipantOnline(participant: Participant, now = Date.now()): boolean {
+  if (participant.lastSeenAt == null) return false;
+  return now - participant.lastSeenAt <= PRESENCE_ONLINE_MS;
+}
+
+export function presentParticipants(
+  participants: Participant[],
+  selfId?: string | null,
+  now = Date.now(),
+): Participant[] {
+  return participants.filter(
+    (participant) => participant.id === selfId || isParticipantOnline(participant, now),
+  );
+}
+
+export function touchPresence(room: Room, actorId: string, now: number): Room {
+  requireParticipant(room, actorId);
+  const participants = room.participants
+    .filter(
+      (participant) =>
+        participant.id === actorId ||
+        (participant.lastSeenAt != null && now - participant.lastSeenAt <= PRESENCE_PRUNE_MS),
+    )
+    .map((participant) =>
+      participant.id === actorId ? { ...participant, lastSeenAt: now } : participant,
+    );
+  const ownerStillPresent = participants.some((participant) => participant.id === room.ownerId);
+  return {
+    ...room,
+    participants,
+    ownerId: ownerStillPresent ? room.ownerId : (participants[0]?.id ?? ''),
+  };
+}
+
 export function requiredName(value: string, label: string, max = 60): string {
   const name = value.trim().replace(/\s+/g, ' ');
   if (!name) throw new DomainError(`Informe ${label}.`);

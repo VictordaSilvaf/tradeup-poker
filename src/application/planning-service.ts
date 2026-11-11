@@ -10,6 +10,7 @@ import {
   requireParticipant,
   revealVotes,
   summarizeVotes,
+  touchPresence,
 } from '../domain/room';
 import type { ChatAttachment, DeckId, Room } from '../domain/room';
 import type { Clock, IdentityProvider, RoomRepository } from './ports';
@@ -31,12 +32,14 @@ export class PlanningService {
   }
   async createRoom(roomName: string, playerName: string, deck: DeckId) {
     const name = requiredName(roomName, 'o nome da sala');
+    const now = this.clock.now().getTime();
     const participant = {
       id: this.identity.newId(),
       name: requiredName(playerName, 'seu nome', 30),
       vote: null,
       voted: false,
       spectator: false,
+      lastSeenAt: now,
     };
     const room: Room = {
       id: this.identity.newId().replaceAll('-', ''),
@@ -58,12 +61,14 @@ export class PlanningService {
     return { room, participant };
   }
   async joinRoom(id: string, name: string, spectator = false) {
+    const now = this.clock.now().getTime();
     const participant = {
       id: this.identity.newId(),
       name: requiredName(name, 'seu nome', 30),
       vote: null,
       voted: false,
       spectator,
+      lastSeenAt: now,
     };
     const room = await this.rooms.update(id, (room) => ({
       ...room,
@@ -71,6 +76,9 @@ export class PlanningService {
       participants: [...room.participants, participant],
     }));
     return { room, participant };
+  }
+  heartbeat(id: string, actor: string) {
+    return this.change(id, actor, (room) => touchPresence(room, actor, this.clock.now().getTime()));
   }
   private change(id: string, actor: string, transform: (room: Room) => Room) {
     return this.rooms.update(id, (room) => {

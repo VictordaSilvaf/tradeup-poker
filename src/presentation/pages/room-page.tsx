@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Check, CircleHelp, History, Settings2, Users } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { planning } from '../../app/dependencies';
 import {
   castVote,
   postChatMessage,
+  presentParticipants,
   type ChatAttachment,
   type Room,
 } from '../../domain/room';
@@ -29,6 +30,7 @@ import { Brand, Button, ErrorMessage, LargeIcon, TextButton, ToastViewport } fro
 import { useAction } from '../hooks/use-action';
 import { useRoom } from '../hooks/use-room';
 import { useRoomPoke } from '../hooks/use-room-poke';
+import { useRoomPresence } from '../hooks/use-room-presence';
 import { JoinPage } from './join-page';
 
 type ModalType = 'invite' | 'settings' | 'profile' | 'history' | 'help' | null;
@@ -39,8 +41,11 @@ export function RoomPage() {
 }
 
 function RoomSession({ roomId }: { roomId: string }) {
-  const { room, loading, error: loadError, mutate } = useRoom(roomId);
-  const [actor, setActor] = useState(() => session.read(roomId));
+  const { room, loading, error: loadError, mutate, refresh } = useRoom(roomId);
+  const [actor, setActor] = useState(() => session.participantId(roomId));
+  const [presenceEnabled, setPresenceEnabled] = useState(true);
+  const [rejoining, setRejoining] = useState(false);
+  const rejoiningRef = useRef(false);
   const [panelOpen, setPanelOpen] = useState(() => window.innerWidth > 1000);
   const [panelTab, setPanelTab] = useState<SidePanelTab>('chat');
   const [modal, setModal] = useState<ModalType>(null);
@@ -55,10 +60,48 @@ function RoomSession({ roomId }: { roomId: string }) {
     };
   }, [room]);
 
+  useEffect(() => {
+    if (!room || loading || participant || rejoiningRef.current) return;
+    const stored = session.read(roomId);
+    if (!stored?.name) return;
+
+    let cancelled = false;
+    rejoiningRef.current = true;
+    setRejoining(true);
+    void planning
+      .joinRoom(roomId, stored.name, stored.spectator)
+      .then(async (result) => {
+        if (cancelled) {
+          await planning.leave(roomId, result.participant.id).catch(() => {});
+          return;
+        }
+        session.save(roomId, result.participant);
+        setActor(result.participant.id);
+        setPresenceEnabled(true);
+        await refresh({ force: true }).catch(() => {});
+      })
+      .catch(() => {
+        if (!cancelled) session.clear(roomId);
+      })
+      .finally(() => {
+        rejoiningRef.current = false;
+        if (!cancelled) setRejoining(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, participant, refresh, room, roomId]);
+
   async function leave() {
     if (!actor) return;
-    await planning.leave(roomId, actor);
+    setPresenceEnabled(false);
     session.clear(roomId);
+    try {
+      await planning.leave(roomId, actor);
+    } catch {
+      /* já pode ter saído pelo pagehide/heartbeat */
+    }
     navigate('/');
   }
 
@@ -71,12 +114,12 @@ function RoomSession({ roomId }: { roomId: string }) {
     setPanelOpen(true);
   }
 
-  if (loading)
+  if (loading || rejoining)
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center p-8 text-center" aria-busy="true">
         <Brand />
         <div className="my-[50px] h-[130px] w-[250px] animate-loading rounded-[70px] bg-surface-raised" />
-        <p>Preparando a mesa…</p>
+        <p>{rejoining ? 'Reentrando na mesa…' : 'Preparando a mesa…'}</p>
       </main>
     );
 
@@ -112,6 +155,7 @@ function RoomSession({ roomId }: { roomId: string }) {
     <RoomPlaying
       room={room}
       participant={participant}
+      presenceEnabled={presenceEnabled}
       panelOpen={panelOpen}
       panelTab={panelTab}
       modal={modal}
@@ -132,6 +176,7 @@ function RoomSession({ roomId }: { roomId: string }) {
 function RoomPlaying({
   room,
   participant,
+  presenceEnabled,
   panelOpen,
   panelTab,
   modal,
@@ -148,6 +193,7 @@ function RoomPlaying({
 }: {
   room: Room;
   participant: Room['participants'][number];
+  presenceEnabled: boolean;
   panelOpen: boolean;
   panelTab: SidePanelTab;
   modal: ModalType;
@@ -162,14 +208,29 @@ function RoomPlaying({
   setPanelOpen: (open: boolean) => void;
   setPanelTab: (tab: SidePanelTab) => void;
 }) {
+  useRoomPresence(room.id, participant.id, presenceEnabled);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 5_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const liveRoom = useMemo<Room>(
+    () => ({
+      ...room,
+      participants: presentParticipants(room.participants, participant.id, now),
+    }),
+    [now, participant.id, room],
+  );
+
   const { poke, shakingId } = useRoomPoke(
     room.id,
     { id: participant.id, name: participant.name },
     true,
   );
-  const activeIssue = room.issues.find((issue) => issue.id === room.activeIssueId);
-  const voted = room.participants.filter((entry) => !entry.spectator && entry.voted).length;
-  const voters = room.participants.filter((entry) => !entry.spectator).length;
+  const activeIssue = liveRoom.issues.find((issue) => issue.id === liveRoom.activeIssueId);
+  const voted = liveRoom.participants.filter((entry) => !entry.spectator && entry.voted).length;
+  const voters = liveRoom.participants.filter((entry) => !entry.spectator).length;
 
   function voteOptimistic(value: string) {
     void mutate(
@@ -224,7 +285,7 @@ function RoomPlaying({
           </div>
           {error && <div className="mx-auto my-4 w-[min(600px,100%)]"><ErrorMessage message={error} /></div>}
           <VotingTable
-            room={room}
+            room={liveRoom}
             currentId={participant.id}
             busy={busy}
             shakingId={shakingId}
@@ -237,9 +298,9 @@ function RoomPlaying({
             onPoke={poke}
           />
           <div className="flex min-h-0 shrink-0 flex-col">
-            {room.revealed ? (
+            {liveRoom.revealed ? (
               <>
-                <Results room={room} />
+                <Results room={liveRoom} />
                 {activeIssue && (
                   <div className="mb-2.5 flex flex-col items-center gap-1.5">
                     <Button
@@ -257,15 +318,15 @@ function RoomPlaying({
               </>
             ) : (
               <RoundProgress
-                participants={room.participants.length}
+                participants={liveRoom.participants.length}
                 voted={voted}
                 voters={voters}
               />
             )}
             <VotingDeck
-              room={room}
+              room={liveRoom}
               participant={participant}
-              busy={Boolean(room.revealEndsAt)}
+              busy={Boolean(liveRoom.revealEndsAt)}
               onVote={voteOptimistic}
             />
             <footer className="mt-1.5 flex items-center gap-5 border-t border-border-subtle py-2.5 text-[9px] text-subtle">

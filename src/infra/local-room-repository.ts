@@ -15,6 +15,7 @@ const roomSchema = z.object({
       vote: z.string().nullable(),
       voted: z.boolean().optional(),
       spectator: z.boolean(),
+      lastSeenAt: z.number().optional(),
     }),
   ),
   revealed: z.boolean(),

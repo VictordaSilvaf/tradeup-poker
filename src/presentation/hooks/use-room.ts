@@ -17,7 +17,7 @@ export function useRoom(id: string) {
   const refresh = useCallback(
     async (options?: { force?: boolean }) => {
       try {
-        const viewerId = session.read(id);
+        const viewerId = session.participantId(id);
         const result = await planning.findRoom(id, viewerId);
         if (!options?.force && pendingMutations.current > 0) return result;
         setRoom(result);
@@ -57,7 +57,7 @@ export function useRoom(id: string) {
 
       try {
         const saved = await persist();
-        const masked = maskRoomVotes(saved, session.read(id));
+        const masked = maskRoomVotes(saved, session.participantId(id));
         setRoom(masked);
         roomRef.current = masked;
         setError('');
